@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AniMate - Kids Stop Motion Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #f8fafc; /* Slate-50 */
+            color: #334155; /* Slate-700 */
+            overscroll-behavior: none;
+        }
+        
+        /* Subtle Scrollbar */
+        .timeline-scroll::-webkit-scrollbar {
+            height: 8px;
+        }
+        .timeline-scroll::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        .timeline-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1; /* Slate-300 */
+            border-radius: 4px;
+        }
+        .timeline-scroll::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .btn-press:active {
+            transform: scale(0.98);
+        }
+
+        .frame-thumbnail {
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: grab;
+        }
+        .frame-thumbnail:active {
+            cursor: grabbing;
+        }
+        
+        /* Mirror utility */
+        .mirror-x {
+            transform: scale-x(-1);
+        }
+
+        /* Onion Skin Overlay */
+        #onion-skin-layer {
+            pointer-events: none;
+            mix-blend-mode: normal;
+        }
+
+        /* Drag and Drop Visuals */
+        .dragging {
+            opacity: 0.5;
+            transform: scale(0.9);
+            border-color: #3b82f6 !important; /* Blue-500 */
+        }
+        
+        .drag-over {
+            border-left: 4px solid #3b82f6;
+            padding-left: 10px;
+        }
+
+        /* Range Slider Styling */
+        input[type=range] {
+            accent-color: #64748b; /* Slate-500 */
+        }
+
+        /* Delete Button Always Visible on Touch, Hover on Desktop */
+        .delete-btn {
+            opacity: 1;
+            transition: opacity 0.2s;
+        }
+        @media (hover: hover) {
+            .delete-btn {
+                opacity: 0;
+            }
+            .frame-wrapper:hover .delete-btn {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 p-3 z-20">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-slate-100 p-2 rounded-lg text-slate-600">
+                    <i class="fa-solid fa-film text-xl"></i>
+                </div>
+                <h1 class="text-xl md:text-2xl font-bold text-slate-700 tracking-tight">AniMate <span class="text-slate-400 font-normal text-lg">Studio</span></h1>
+            </div>
+            
+            <button id="reset-btn" class="bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold py-2 px-4 rounded-lg btn-press transition text-sm">
+                <i class="fa-solid fa-trash-can mr-2"></i>Clear
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 flex flex-col md:flex-row gap-6 p-4 md:p-6 max-w-7xl mx-auto w-full overflow-y-auto md:overflow-hidden">
+        
+        <!-- Left Panel: Stage & Camera -->
+        <div class="flex-1 flex flex-col gap-4 min-w-0 shrink-0">
+            <!-- The Stage -->
+            <div class="relative bg-black rounded-2xl overflow-hidden shadow-lg border border-slate-200 aspect-video group w-full shrink-0">
+                
+                <!-- Live Camera Feed -->
+                <video id="camera-feed" autoplay playsinline class="w-full h-full object-cover mirror-x"></video>
+                
+                <!-- Onion Skin (Previous Frame) -->
+                <img id="onion-skin-layer" class="absolute inset-0 w-full h-full object-cover mirror-x opacity-30 hidden" src="" alt="Onion Skin">
+                
+                <!-- Playback Layer -->
+                <canvas id="playback-canvas" class="absolute inset-0 w-full h-full object-cover mirror-x hidden bg-black"></canvas>
+
+                <!-- Recording Overlay -->
+                <div id="recording-overlay" class="absolute inset-0 bg-slate-900 bg-opacity-95 flex flex-col items-center justify-center hidden z-50 text-white">
+                    <div class="text-xl font-bold mb-4">Rendering Video...</div>
+                    <div class="w-64 h-2 bg-slate-700 rounded-full overflow-hidden">
+                        <div id="render-progress" class="h-full bg-blue-500 w-0 transition-all duration-300"></div>
+                    </div>
+                </div>
+
+                <!-- Start Screen Overlay -->
+                <div id="start-screen" class="absolute inset-0 bg-slate-50 flex flex-col items-center justify-center z-40 text-slate-700 p-6 text-center">
+                    <div id="start-content" class="flex flex-col items-center">
+                        <div class="bg-white p-6 rounded-2xl mb-4 shadow-sm border border-slate-100">
+                            <i class="fa-solid fa-camera text-slate-400 text-5xl"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold mb-2">Ready to Animate?</h2>
+                        <p class="mb-6 text-slate-500">Allow camera access to start creating.</p>
+                        <button id="start-camera-btn" class="bg-blue-500 hover:bg-blue-600 text-white text-lg font-bold py-3 px-8 rounded-xl shadow-md btn-press transition">
+                            Start Camera
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stage Controls -->
+            <div class="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                
+                <!-- Onion Skin Control -->
+                <div class="flex items-center gap-3">
+                    <div class="text-slate-400">
+                        <i class="fa-solid fa-layer-group"></i>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ghost Mode</label>
+                        <input type="range" id="onion-slider" min="0" max="1" step="0.1" value="0.3" class="w-24 md:w-32 cursor-pointer">
+                    </div>
+                </div>
+
+                <!-- Capture Button -->
+                <button id="capture-btn" class="w-16 h-16 bg-red-500 rounded-full border-4 border-red-100 shadow-md flex items-center justify-center hover:bg-red-600 active:bg-red-700 btn-press transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <div class="w-6 h-6 bg-white rounded-full"></div>
+                </button>
+
+                <!-- Frame Count -->
+                <div class="w-32 flex justify-end">
+                    <div class="text-right">
+                        <span id="frame-count" class="text-2xl font-bold text-slate-700 font-mono">0</span>
+                        <span class="text-slate-400 text-xs font-bold uppercase block">Frames</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Playback & Tools -->
+        <div class="w-full md:w-72 flex flex-col gap-4 shrink-0 pb-20 md:pb-0">
+            
+            <!-- Tools Card -->
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Playback</h3>
+                
+                <div class="flex justify-center gap-3 mb-6">
+                    <button id="play-btn" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg shadow-sm btn-press transition disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fa-solid fa-play mr-2"></i>Play
+                    </button>
+                    <button id="stop-btn" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 px-4 rounded-lg shadow-sm btn-press transition hidden">
+                        <i class="fa-solid fa-stop mr-2"></i>Stop
+                    </button>
+                </div>
+
+                <div class="mb-6">
+                     <div class="flex justify-between mb-2">
+                        <span class="text-xs font-bold text-slate-400">SPEED (FPS)</span>
+                        <span id="fps-display" class="text-xs font-bold text-slate-600 font-mono">10</span>
+                    </div>
+                    <input type="range" id="fps-slider" min="1" max="24" value="10" class="w-full cursor-pointer">
+                </div>
+                
+                <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3 mt-6">Import</h3>
+                <input type="file" id="image-upload" accept="image/*" class="hidden">
+                <button id="upload-btn" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold py-2 px-4 rounded-lg border border-slate-200 btn-press transition text-sm">
+                    <i class="fa-solid fa-image mr-2"></i> Upload Photo
+                </button>
+            </div>
+
+            <!-- Export Card -->
+            <div class="bg-slate-800 p-5 rounded-xl shadow-md text-white mt-auto">
+                <h3 class="text-lg font-bold mb-1">Export Movie</h3>
+                <p class="text-slate-400 text-xs mb-4">Download your animation as a video file.</p>
+                <button id="download-btn" class="w-full bg-blue-500 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-blue-600 btn-press transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-download mr-2"></i> Download MP4
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom Timeline -->
+    <div class="h-32 bg-white border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-20 flex-shrink-0">
+        <div id="timeline" class="h-full w-full overflow-x-auto timeline-scroll flex items-center gap-2 px-4 py-2">
+            <!-- Empty State -->
+            <div id="timeline-empty" class="w-full text-center text-slate-300 flex flex-col items-center justify-center h-full">
+                <i class="fa-solid fa-images text-2xl mb-2 opacity-50"></i>
+                <p class="text-xs font-bold">Captured frames appear here</p>
+            </div>
+            <!-- Frames injected here -->
+        </div>
+    </div>
+
+    <!-- Hidden Elements -->
+    <canvas id="hidden-capture-canvas" class="hidden"></canvas>
+
+    <!-- Custom Confirmation Modal -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-900 bg-opacity-50 flex items-center justify-center z-[100] hidden backdrop-blur-sm">
+        <div class="bg-white p-6 rounded-2xl shadow-xl max-w-sm w-full mx-4 text-center transform scale-100 transition-all">
+            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fa-solid fa-triangle-exclamation text-red-500 text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-700 mb-2">Clear Animation?</h3>
+            <p class="text-slate-500 text-sm mb-6">This will delete all your frames and start a new project. You cannot undo this.</p>
+            <div class="flex gap-3 justify-center">
+                <button id="confirm-cancel-btn" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 px-4 rounded-xl transition">
+                    Cancel
+                </button>
+                <button id="confirm-delete-btn" class="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition">
+                    Yes, Clear
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- State Management ---
+        const state = {
+            frames: [], // Stores dataURLs
+            currentFrameIndex: 0,
+            isPlaying: false,
+            frameRate: 10,
+            onionSkinOpacity: 0.3,
+            stream: null,
+            timerId: null,
+            videoMimeType: 'video/webm', // Fallback
+            draggedItemIndex: null
+        };
+
+        // --- DOM Elements ---
+        const videoElement = document.getElementById('camera-feed');
+        const onionSkinImage = document.getElementById('onion-skin-layer');
+        const playbackCanvas = document.getElementById('playback-canvas');
+        const hiddenCanvas = document.getElementById('hidden-capture-canvas');
+        const timelineContainer = document.getElementById('timeline');
+        const timelineEmpty = document.getElementById('timeline-empty');
+        const startScreen = document.getElementById('start-screen');
+        const startContent = document.getElementById('start-content');
+        const frameCountDisplay = document.getElementById('frame-count');
+        const fpsDisplay = document.getElementById('fps-display');
+        const renderProgress = document.getElementById('render-progress');
+        const recordingOverlay = document.getElementById('recording-overlay');
+        const imageUploadInput = document.getElementById('image-upload');
+
+        const startCameraBtn = document.getElementById('start-camera-btn');
+        const captureBtn = document.getElementById('capture-btn');
+        const playBtn = document.getElementById('play-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const uploadBtn = document.getElementById('upload-btn');
+        const onionSlider = document.getElementById('onion-slider');
+        const fpsSlider = document.getElementById('fps-slider');
+
+        // Modal Elements
+        const confirmModal = document.getElementById('confirm-modal');
+        const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
+        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+
+        const ctxPlayback = playbackCanvas.getContext('2d');
+        const ctxHidden = hiddenCanvas.getContext('2d');
+
+        // --- Init ---
+        function init() {
+            // Check video support
+            const types = ['video/mp4', 'video/webm;codecs=h264', 'video/webm'];
+            for (const type of types) {
+                if (MediaRecorder.isTypeSupported(type)) {
+                    state.videoMimeType = type;
+                    break;
+                }
+            }
+
+            // Event Listeners
+            startCameraBtn.addEventListener('click', startCamera);
+            captureBtn.addEventListener('click', captureFrame);
+            playBtn.addEventListener('click', togglePlay);
+            stopBtn.addEventListener('click', stopPlayback);
+            downloadBtn.addEventListener('click', exportVideo);
+            
+            // Clear / Reset Logic with Modal
+            resetBtn.addEventListener('click', () => {
+                if (state.frames.length > 0) {
+                    confirmModal.classList.remove('hidden');
+                }
+            });
+            confirmCancelBtn.addEventListener('click', () => {
+                confirmModal.classList.add('hidden');
+            });
+            confirmDeleteBtn.addEventListener('click', () => {
+                confirmReset();
+            });
+
+            uploadBtn.addEventListener('click', () => imageUploadInput.click());
+            imageUploadInput.addEventListener('change', handleImageUpload);
+
+            onionSlider.addEventListener('input', (e) => {
+                state.onionSkinOpacity = e.target.value;
+                updateOnionSkin();
+            });
+
+            fpsSlider.addEventListener('input', (e) => {
+                state.frameRate = parseInt(e.target.value);
+                fpsDisplay.textContent = state.frameRate;
+                if (state.isPlaying) {
+                    stopPlayback();
+                    togglePlay();
+                }
+            });
+
+            updateUI();
+        }
+
+        // --- Camera & Capture ---
+        async function startCamera() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert("This browser does not support camera access via this method.");
+                return;
+            }
+
+            try {
+                // We make a direct, simple request for the camera.
+                // We use 'ideal' constraints which are suggestions, not hard requirements.
+                // We also strictly disable audio to reduce permission complexity.
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 1280 }, 
+                        height: { ideal: 720 },
+                        facingMode: 'user' // Prefer front camera but allow others
+                    }, 
+                    audio: false 
+                });
+                
+                state.stream = stream;
+                videoElement.srcObject = stream;
+                
+                // Metadata load ensures the stream is actually active before we show the UI
+                videoElement.onloadedmetadata = () => {
+                    playbackCanvas.width = videoElement.videoWidth;
+                    playbackCanvas.height = videoElement.videoHeight;
+                    hiddenCanvas.width = videoElement.videoWidth;
+                    hiddenCanvas.height = videoElement.videoHeight;
+                    startScreen.classList.add('hidden');
+                    captureBtn.disabled = false;
+                };
+
+            } catch (err) {
+                console.error("Camera Error:", err);
+                
+                // If it fails, we show the exact error. We do NOT replace the UI with a workaround.
+                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                    alert("Camera access was blocked by the browser or host site. Please check permissions in your browser address bar.");
+                } else if (err.name === 'NotFoundError') {
+                    alert("No camera device found.");
+                } else {
+                    alert("Could not start camera: " + err.message);
+                }
+                // We keep the start screen visible so they can try again or use the upload button manually.
+            }
+        }
+
+        function captureFrame() {
+            if (!state.stream) return;
+            ctxHidden.drawImage(videoElement, 0, 0, hiddenCanvas.width, hiddenCanvas.height);
+            saveFrameToState();
+            playClickSound();
+            
+            // Visual feedback on button
+            captureBtn.style.transform = "scale(0.9)";
+            setTimeout(() => captureBtn.style.transform = "scale(1)", 100);
+        }
+
+        function handleImageUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    ctxHidden.clearRect(0, 0, hiddenCanvas.width, hiddenCanvas.height);
+                    // Scale logic
+                    const scale = Math.max(hiddenCanvas.width / img.width, hiddenCanvas.height / img.height);
+                    const x = (hiddenCanvas.width / 2) - (img.width / 2) * scale;
+                    const y = (hiddenCanvas.height / 2) - (img.height / 2) * scale;
+                    
+                    // Draw normally (viewport mirrors it visually)
+                    ctxHidden.drawImage(img, x, y, img.width * scale, img.height * scale);
+                    saveFrameToState();
+                    imageUploadInput.value = '';
+                }
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function saveFrameToState() {
+            const imageData = hiddenCanvas.toDataURL('image/jpeg', 0.85);
+            state.frames.push(imageData);
+            updateTimeline();
+            updateUI();
+            updateOnionSkin();
+            
+            // Auto-scroll timeline to end
+            setTimeout(() => {
+                timelineContainer.scrollTo({ left: timelineContainer.scrollWidth, behavior: 'smooth' });
+            }, 50);
+        }
+
+        function deleteFrame(index) {
+            state.frames.splice(index, 1);
+            updateTimeline();
+            updateUI();
+            updateOnionSkin();
+        }
+
+        // --- Timeline & Drag-Drop ---
+        function updateTimeline() {
+            // Clear but keep empty state
+            Array.from(timelineContainer.children).forEach(child => {
+                if (child.id !== 'timeline-empty') child.remove();
+            });
+
+            state.frames.forEach((frameData, index) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'frame-wrapper relative flex-shrink-0 group cursor-grab active:cursor-grabbing';
+                wrapper.draggable = true;
+                
+                // Drag Events
+                wrapper.addEventListener('dragstart', (e) => {
+                    state.draggedItemIndex = index;
+                    wrapper.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+                
+                wrapper.addEventListener('dragend', () => {
+                    wrapper.classList.remove('dragging');
+                    state.draggedItemIndex = null;
+                    // Remove all drag-over classes
+                    document.querySelectorAll('.frame-wrapper').forEach(el => el.classList.remove('drag-over'));
+                });
+
+                wrapper.addEventListener('dragover', (e) => {
+                    e.preventDefault(); // Necessary for drop
+                    if (state.draggedItemIndex === index) return;
+                    wrapper.classList.add('drag-over');
+                });
+
+                wrapper.addEventListener('dragleave', () => {
+                    wrapper.classList.remove('drag-over');
+                });
+
+                wrapper.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    if (state.draggedItemIndex === null || state.draggedItemIndex === index) return;
+                    
+                    // Reorder array
+                    const item = state.frames.splice(state.draggedItemIndex, 1)[0];
+                    state.frames.splice(index, 0, item);
+                    
+                    updateTimeline();
+                    updateUI();
+                    updateOnionSkin();
+                });
+
+                // Image
+                const img = document.createElement('img');
+                img.src = frameData;
+                img.className = 'h-24 w-32 object-cover rounded-lg border border-slate-300 shadow-sm mirror-x bg-white';
+                img.draggable = false; // Prevent default image drag
+
+                // Badge
+                const badge = document.createElement('div');
+                badge.className = 'absolute bottom-1 left-1 bg-slate-800 bg-opacity-75 text-white text-[10px] font-bold px-1.5 py-0.5 rounded';
+                badge.textContent = index + 1;
+
+                // Delete Button (Improved)
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-btn absolute -top-2 -right-2 bg-slate-600 hover:bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-md z-10';
+                deleteBtn.innerHTML = '<i class="fa-solid fa-times text-xs"></i>';
+                
+                // Prevent drag on delete click
+                deleteBtn.addEventListener('mousedown', (e) => e.stopPropagation());
+                deleteBtn.addEventListener('touchstart', (e) => e.stopPropagation());
+                
+                deleteBtn.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    deleteFrame(index);
+                };
+
+                wrapper.appendChild(img);
+                wrapper.appendChild(badge);
+                wrapper.appendChild(deleteBtn);
+                timelineContainer.appendChild(wrapper);
+            });
+        }
+
+        // --- Playback ---
+        function togglePlay() {
+            if (state.frames.length === 0) return;
+            state.isPlaying ? stopPlayback() : startPlayback();
+        }
+
+        function startPlayback() {
+            state.isPlaying = true;
+            state.currentFrameIndex = 0;
+            videoElement.classList.add('hidden');
+            onionSkinImage.classList.add('hidden');
+            playbackCanvas.classList.remove('hidden');
+            playBtn.classList.add('hidden');
+            stopBtn.classList.remove('hidden');
+            captureBtn.disabled = true;
+
+            const interval = 1000 / state.frameRate;
+            state.timerId = setInterval(() => {
+                const img = new Image();
+                img.onload = () => {
+                    ctxPlayback.clearRect(0, 0, playbackCanvas.width, playbackCanvas.height);
+                    ctxPlayback.drawImage(img, 0, 0, playbackCanvas.width, playbackCanvas.height);
+                };
+                img.src = state.frames[state.currentFrameIndex];
+                state.currentFrameIndex = (state.currentFrameIndex + 1) % state.frames.length;
+            }, interval);
+        }
+
+        function stopPlayback() {
+            state.isPlaying = false;
+            clearInterval(state.timerId);
+            videoElement.classList.remove('hidden');
+            playbackCanvas.classList.add('hidden');
+            playBtn.classList.remove('hidden');
+            stopBtn.classList.add('hidden');
+            captureBtn.disabled = false;
+            updateOnionSkin();
+        }
+
+        // --- UI Utils ---
+        function updateUI() {
+            frameCountDisplay.textContent = state.frames.length;
+            if (state.frames.length > 0) {
+                playBtn.disabled = false;
+                downloadBtn.disabled = false;
+                timelineEmpty.style.display = 'none';
+            } else {
+                playBtn.disabled = true;
+                downloadBtn.disabled = true;
+                timelineEmpty.style.display = 'flex';
+                onionSkinImage.classList.add("hidden");
+            }
+        }
+
+        function updateOnionSkin() {
+            if (state.isPlaying || state.frames.length === 0 || state.onionSkinOpacity <= 0) {
+                onionSkinImage.classList.add('hidden');
+                return;
+            }
+            onionSkinImage.src = state.frames[state.frames.length - 1];
+            onionSkinImage.classList.remove('hidden');
+            onionSkinImage.style.opacity = state.onionSkinOpacity;
+        }
+
+        function confirmReset() {
+            stopPlayback();
+            state.frames = [];
+            updateTimeline();
+            updateUI();
+            confirmModal.classList.add('hidden');
+        }
+
+        function playClickSound() {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) return;
+            const audioCtx = new AudioContext();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.15);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.15);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.15);
+        }
+
+        // --- Export ---
+        async function exportVideo() {
+            if (state.frames.length === 0) return;
+            recordingOverlay.classList.remove('hidden');
+            
+            const stream = hiddenCanvas.captureStream(state.frameRate);
+            const recorder = new MediaRecorder(stream, { mimeType: state.videoMimeType });
+            const chunks = [];
+
+            recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+            recorder.onstop = () => {
+                const blob = new Blob(chunks, { type: state.videoMimeType });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                const ext = state.videoMimeType.includes('mp4') ? 'mp4' : 'webm';
+                a.style.display = 'none';
+                a.href = url;
+                a.download = `animate-studio-${Date.now()}.${ext}`;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    recordingOverlay.classList.add('hidden');
+                }, 100);
+            };
+
+            recorder.start();
+            const frameTime = 1000 / state.frameRate;
+
+            for (let i = 0; i < state.frames.length; i++) {
+                renderProgress.style.width = `${((i+1)/state.frames.length)*100}%`;
+                await new Promise(resolve => {
+                    const img = new Image();
+                    img.onload = () => {
+                        ctxHidden.clearRect(0,0,hiddenCanvas.width, hiddenCanvas.height);
+                        // Bake mirroring for export
+                        ctxHidden.save();
+                        ctxHidden.translate(hiddenCanvas.width, 0);
+                        ctxHidden.scale(-1, 1);
+                        ctxHidden.drawImage(img, 0, 0, hiddenCanvas.width, hiddenCanvas.height);
+                        ctxHidden.restore();
+                        setTimeout(resolve, frameTime);
+                    };
+                    img.src = state.frames[i];
+                });
+            }
+            setTimeout(() => recorder.stop(), 500);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
