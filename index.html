@@ -43,7 +43,7 @@
             cursor: grabbing;
         }
         
-        /* Mirror utility */
+        /* Mirror utility - Only used for Front Camera Preview */
         .mirror-x {
             transform: scale-x(-1);
         }
@@ -110,17 +110,17 @@
         <!-- Left Panel: Stage & Camera -->
         <div class="flex-1 flex flex-col gap-4 min-w-0 shrink-0">
             <!-- The Stage -->
-            <!-- ADDED min-h-[350px] here to fix mobile cut-off -->
-            <div class="relative bg-black rounded-2xl overflow-hidden shadow-lg border border-slate-200 min-h-[350px] md:min-h-0 md:aspect-video group w-full shrink-0">
+            <div class="relative bg-black rounded-2xl overflow-hidden shadow-lg border border-slate-200 aspect-video group w-full shrink-0">
                 
                 <!-- Live Camera Feed -->
-                <video id="camera-feed" autoplay playsinline class="w-full h-full object-cover mirror-x"></video>
+                <!-- Only mirror if front facing camera (handled in JS) -->
+                <video id="camera-feed" autoplay playsinline webkit-playsinline muted class="w-full h-full object-cover"></video>
                 
                 <!-- Onion Skin (Previous Frame) -->
-                <img id="onion-skin-layer" class="absolute inset-0 w-full h-full object-cover mirror-x opacity-30 hidden" src="" alt="Onion Skin">
+                <img id="onion-skin-layer" class="absolute inset-0 w-full h-full object-cover opacity-30 hidden" src="" alt="Onion Skin">
                 
                 <!-- Playback Layer -->
-                <canvas id="playback-canvas" class="absolute inset-0 w-full h-full object-cover mirror-x hidden bg-black"></canvas>
+                <canvas id="playback-canvas" class="absolute inset-0 w-full h-full object-cover hidden bg-black"></canvas>
 
                 <!-- Recording Overlay -->
                 <div id="recording-overlay" class="absolute inset-0 bg-slate-900 bg-opacity-95 flex flex-col items-center justify-center hidden z-50 text-white">
@@ -131,14 +131,14 @@
                 </div>
 
                 <!-- Start Screen Overlay -->
-                <div id="start-screen" class="absolute inset-0 bg-slate-50 flex flex-col items-center justify-center z-40 text-slate-700 p-6 text-center">
+                <div id="start-screen" class="absolute inset-0 bg-slate-50 flex flex-col items-center justify-center z-40 text-slate-700 p-4 text-center">
                     <div id="start-content" class="flex flex-col items-center w-full max-w-sm">
-                        <div class="bg-white p-4 md:p-6 rounded-2xl mb-4 shadow-sm border border-slate-100">
-                            <i class="fa-solid fa-camera text-slate-400 text-4xl md:text-5xl"></i>
+                        <div class="bg-white p-3 md:p-6 rounded-2xl mb-2 md:mb-4 shadow-sm border border-slate-100">
+                            <i class="fa-solid fa-camera text-slate-400 text-3xl md:text-5xl"></i>
                         </div>
-                        <h2 class="text-xl md:text-2xl font-bold mb-2">Ready to Animate?</h2>
-                        <p class="mb-6 text-slate-500 text-sm md:text-base">Allow camera access to start creating.</p>
-                        <button id="start-camera-btn" class="bg-blue-500 hover:bg-blue-600 text-white text-lg font-bold py-3 px-8 rounded-xl shadow-md btn-press transition w-full md:w-auto">
+                        <h2 class="text-lg md:text-2xl font-bold mb-1 md:mb-2">Ready to Animate?</h2>
+                        <p class="mb-3 md:mb-6 text-slate-500 text-xs md:text-base">Allow camera access to start.</p>
+                        <button id="start-camera-btn" class="bg-blue-500 hover:bg-blue-600 text-white text-base md:text-lg font-bold py-2 px-6 md:py-3 md:px-8 rounded-xl shadow-md btn-press transition w-auto">
                             Start Camera
                         </button>
                     </div>
@@ -146,29 +146,43 @@
             </div>
 
             <!-- Stage Controls -->
-            <div class="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+            <div class="flex flex-wrap items-center justify-between bg-white p-2 md:p-4 rounded-xl shadow-sm border border-slate-200 gap-y-2">
                 
-                <!-- Onion Skin Control -->
-                <div class="flex items-center gap-3">
-                    <div class="text-slate-400">
-                        <i class="fa-solid fa-layer-group"></i>
-                    </div>
-                    <div class="flex flex-col">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ghost Mode</label>
-                        <input type="range" id="onion-slider" min="0" max="1" step="0.1" value="0.3" class="w-24 md:w-32 cursor-pointer">
+                <!-- Left Controls Group -->
+                <div class="flex items-center gap-2 md:gap-4 overflow-x-auto pb-1 md:pb-0 hide-scroll">
+                    <!-- Camera Toggle -->
+                    <button id="camera-toggle-btn" class="flex flex-col items-center justify-center text-slate-400 hover:text-blue-500 transition btn-press p-1.5 md:p-2 rounded-lg hover:bg-slate-50" title="Toggle Camera">
+                        <i class="fa-solid fa-video text-base md:text-lg mb-0.5"></i>
+                        <span class="text-[8px] md:text-[9px] font-bold uppercase tracking-wider">On/Off</span>
+                    </button>
+
+                     <!-- Switch Camera (Front/Back) - Added md:hidden -->
+                     <button id="switch-camera-btn" class="flex flex-col items-center justify-center text-slate-400 hover:text-blue-500 transition btn-press p-1.5 md:p-2 rounded-lg hover:bg-slate-50 hidden md:hidden" title="Switch Camera">
+                        <i class="fa-solid fa-camera-rotate text-base md:text-lg mb-0.5"></i>
+                        <span class="text-[8px] md:text-[9px] font-bold uppercase tracking-wider">Switch</span>
+                    </button>
+
+                    <!-- Onion Skin Control -->
+                    <div class="flex flex-col items-center justify-center px-2 md:px-3 border-l border-slate-100">
+                        <label class="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Ghost Mode</label>
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-layer-group text-slate-400 text-xs"></i>
+                            <input type="range" id="onion-slider" min="0" max="1" step="0.1" value="0.3" class="w-20 md:w-28 h-1.5 accent-slate-500 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                        </div>
                     </div>
                 </div>
 
-                <!-- Capture Button -->
-                <button id="capture-btn" class="w-16 h-16 bg-red-500 rounded-full border-4 border-red-100 shadow-md flex items-center justify-center hover:bg-red-600 active:bg-red-700 btn-press transition disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                    <div class="w-6 h-6 bg-white rounded-full"></div>
-                </button>
+                <!-- Right Controls Group -->
+                <div class="flex items-center gap-3 md:gap-4 ml-auto">
+                    <!-- Capture Button -->
+                    <button id="capture-btn" class="w-14 h-14 md:w-16 md:h-16 bg-red-500 rounded-full border-4 border-red-100 shadow-md flex items-center justify-center hover:bg-red-600 active:bg-red-700 btn-press transition disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:border-slate-100" disabled>
+                        <div class="w-5 h-5 md:w-6 md:h-6 bg-white rounded-full"></div>
+                    </button>
 
-                <!-- Frame Count -->
-                <div class="w-32 flex justify-end">
-                    <div class="text-right">
-                        <span id="frame-count" class="text-2xl font-bold text-slate-700 font-mono">0</span>
-                        <span class="text-slate-400 text-xs font-bold uppercase block">Frames</span>
+                    <!-- Frame Count -->
+                    <div class="w-16 md:w-24 text-right">
+                        <span id="frame-count" class="text-xl md:text-2xl font-bold text-slate-700 font-mono">0</span>
+                        <span class="text-slate-400 text-[9px] md:text-[10px] font-bold uppercase block">Frames</span>
                     </div>
                 </div>
             </div>
@@ -199,9 +213,9 @@
                 </div>
                 
                 <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3 mt-6">Import</h3>
-                <input type="file" id="image-upload" accept="image/*" class="hidden">
+                <input type="file" id="image-upload" accept="image/*" class="hidden" multiple>
                 <button id="upload-btn" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold py-2 px-4 rounded-lg border border-slate-200 btn-press transition text-sm">
-                    <i class="fa-solid fa-image mr-2"></i> Upload Photo
+                    <i class="fa-solid fa-images mr-2"></i> Upload Photos
                 </button>
             </div>
 
@@ -217,7 +231,7 @@
     </main>
 
     <!-- Bottom Timeline -->
-    <div class="h-32 bg-white border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-20 flex-shrink-0">
+    <div class="h-28 md:h-32 bg-white border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-20 flex-shrink-0">
         <div id="timeline" class="h-full w-full overflow-x-auto timeline-scroll flex items-center gap-2 px-4 py-2">
             <!-- Empty State -->
             <div id="timeline-empty" class="w-full text-center text-slate-300 flex flex-col items-center justify-center h-full">
@@ -260,8 +274,10 @@
             onionSkinOpacity: 0.3,
             stream: null,
             timerId: null,
-            videoMimeType: 'video/webm', // Fallback
-            draggedItemIndex: null
+            videoMimeType: 'video/webm',
+            draggedItemIndex: null,
+            cameraActive: false,
+            facingMode: 'user', // 'user' (front) or 'environment' (back)
         };
 
         // --- DOM Elements ---
@@ -280,6 +296,8 @@
         const imageUploadInput = document.getElementById('image-upload');
 
         const startCameraBtn = document.getElementById('start-camera-btn');
+        const cameraToggleBtn = document.getElementById('camera-toggle-btn'); 
+        const switchCameraBtn = document.getElementById('switch-camera-btn');
         const captureBtn = document.getElementById('capture-btn');
         const playBtn = document.getElementById('play-btn');
         const stopBtn = document.getElementById('stop-btn');
@@ -289,7 +307,6 @@
         const onionSlider = document.getElementById('onion-slider');
         const fpsSlider = document.getElementById('fps-slider');
 
-        // Modal Elements
         const confirmModal = document.getElementById('confirm-modal');
         const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
         const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
@@ -308,25 +325,38 @@
                 }
             }
 
+            // Video settings
+            videoElement.setAttribute('playsinline', 'true');
+            videoElement.setAttribute('webkit-playsinline', 'true');
+            
+            // Watchdog
+            videoElement.addEventListener('pause', () => {
+                if (state.cameraActive && !document.hidden) {
+                    videoElement.play().catch(e => console.log("Auto-resume failed", e));
+                }
+            });
+            
+            videoElement.addEventListener('loadedmetadata', () => {
+                 if (state.cameraActive) videoElement.play().catch(e => console.log(e));
+                 updateUI();
+            });
+
             // Event Listeners
             startCameraBtn.addEventListener('click', startCamera);
+            cameraToggleBtn.addEventListener('click', toggleCamera); 
+            switchCameraBtn.addEventListener('click', switchCamera);
             captureBtn.addEventListener('click', captureFrame);
             playBtn.addEventListener('click', togglePlay);
             stopBtn.addEventListener('click', stopPlayback);
             downloadBtn.addEventListener('click', exportVideo);
             
-            // Clear / Reset Logic with Modal
             resetBtn.addEventListener('click', () => {
                 if (state.frames.length > 0) {
                     confirmModal.classList.remove('hidden');
                 }
             });
-            confirmCancelBtn.addEventListener('click', () => {
-                confirmModal.classList.add('hidden');
-            });
-            confirmDeleteBtn.addEventListener('click', () => {
-                confirmReset();
-            });
+            confirmCancelBtn.addEventListener('click', () => confirmModal.classList.add('hidden'));
+            confirmDeleteBtn.addEventListener('click', confirmReset);
 
             uploadBtn.addEventListener('click', () => imageUploadInput.click());
             imageUploadInput.addEventListener('change', handleImageUpload);
@@ -348,22 +378,36 @@
             updateUI();
         }
 
-        // --- Camera & Capture ---
+        // --- Camera Handling ---
+        
+        async function toggleCamera() {
+            if (state.cameraActive) {
+                stopCamera();
+            } else {
+                startCamera();
+            }
+        }
+
+        async function switchCamera() {
+            if (!state.cameraActive) return;
+            state.facingMode = state.facingMode === 'user' ? 'environment' : 'user';
+            await startCamera();
+        }
+
         async function startCamera() {
+            stopCamera(); // Clean up old stream
+
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                alert("This browser does not support camera access via this method.");
+                alert("Camera not supported here.");
                 return;
             }
 
             try {
-                // We make a direct, simple request for the camera.
-                // We use 'ideal' constraints which are suggestions, not hard requirements.
-                // We also strictly disable audio to reduce permission complexity.
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { 
                         width: { ideal: 1280 }, 
                         height: { ideal: 720 },
-                        facingMode: 'user' // Prefer front camera but allow others
+                        facingMode: state.facingMode 
                     }, 
                     audio: false 
                 });
@@ -371,63 +415,128 @@
                 state.stream = stream;
                 videoElement.srcObject = stream;
                 
-                // Metadata load ensures the stream is actually active before we show the UI
-                videoElement.onloadedmetadata = () => {
-                    playbackCanvas.width = videoElement.videoWidth;
-                    playbackCanvas.height = videoElement.videoHeight;
-                    hiddenCanvas.width = videoElement.videoWidth;
-                    hiddenCanvas.height = videoElement.videoHeight;
-                    startScreen.classList.add('hidden');
-                    captureBtn.disabled = false;
-                };
+                // Set canvas sizes
+                hiddenCanvas.width = 1280;
+                hiddenCanvas.height = 720;
+                playbackCanvas.width = 1280;
+                playbackCanvas.height = 720;
+                
+                state.cameraActive = true;
+                
+                try {
+                    await videoElement.play();
+                } catch(e) {
+                    console.log("Play failed", e);
+                }
+                
+                startScreen.classList.add('hidden');
+                videoElement.classList.remove('hidden');
+                updateUI();
 
             } catch (err) {
                 console.error("Camera Error:", err);
-                
-                // If it fails, we show the exact error. We do NOT replace the UI with a workaround.
+                state.cameraActive = false;
                 if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-                    alert("Camera access was blocked by the browser or host site. Please check permissions in your browser address bar.");
-                } else if (err.name === 'NotFoundError') {
-                    alert("No camera device found.");
+                    alert("Camera blocked. Check browser permissions.");
                 } else {
-                    alert("Could not start camera: " + err.message);
+                    alert("Camera error: " + err.message);
                 }
-                // We keep the start screen visible so they can try again or use the upload button manually.
             }
+            updateUI();
+        }
+
+        function stopCamera() {
+            if (state.stream) {
+                state.stream.getTracks().forEach(track => track.stop());
+                state.stream = null;
+            }
+            videoElement.srcObject = null;
+            state.cameraActive = false;
+            videoElement.classList.add('hidden');
+            updateUI();
+        }
+
+        // --- Draw Helper with Smart Crop ---
+        function drawImageCover(ctx, img, x, y, w, h) {
+            const imgW = img.videoWidth || img.width;
+            const imgH = img.videoHeight || img.height;
+            const targetRatio = w / h;
+            const sourceRatio = imgW / imgH;
+            
+            let sx, sy, sWidth, sHeight;
+            
+            if (sourceRatio > targetRatio) {
+                sHeight = imgH;
+                sWidth = imgH * targetRatio;
+                sy = 0;
+                sx = (imgW - sWidth) / 2;
+            } else {
+                sWidth = imgW;
+                sHeight = imgW / targetRatio;
+                sx = 0;
+                sy = (imgH - sHeight) / 2;
+            }
+            
+            ctx.drawImage(img, sx, sy, sWidth, sHeight, x, y, w, h);
         }
 
         function captureFrame() {
-            if (!state.stream) return;
-            ctxHidden.drawImage(videoElement, 0, 0, hiddenCanvas.width, hiddenCanvas.height);
+            if (!state.cameraActive) return;
+            
+            ctxHidden.clearRect(0, 0, hiddenCanvas.width, hiddenCanvas.height);
+            
+            // Standard Capture: NO Mirroring on Canvas for FILE STORAGE
+            // This means even if preview is mirrored (front cam), the file is correct (text readable)
+            drawImageCover(ctxHidden, videoElement, 0, 0, hiddenCanvas.width, hiddenCanvas.height);
+            
             saveFrameToState();
             playClickSound();
             
-            // Visual feedback on button
             captureBtn.style.transform = "scale(0.9)";
             setTimeout(() => captureBtn.style.transform = "scale(1)", 100);
         }
 
-        function handleImageUpload(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const img = new Image();
-                img.onload = () => {
-                    ctxHidden.clearRect(0, 0, hiddenCanvas.width, hiddenCanvas.height);
-                    // Scale logic
-                    const scale = Math.max(hiddenCanvas.width / img.width, hiddenCanvas.height / img.height);
-                    const x = (hiddenCanvas.width / 2) - (img.width / 2) * scale;
-                    const y = (hiddenCanvas.height / 2) - (img.height / 2) * scale;
-                    
-                    // Draw normally (viewport mirrors it visually)
-                    ctxHidden.drawImage(img, x, y, img.width * scale, img.height * scale);
-                    saveFrameToState();
-                    imageUploadInput.value = '';
-                }
-                img.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
+        async function handleImageUpload(e) {
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
+
+            if (playbackCanvas.width === 0 || playbackCanvas.width === 300) {
+                playbackCanvas.width = 1280;
+                playbackCanvas.height = 720;
+                hiddenCanvas.width = 1280;
+                hiddenCanvas.height = 720;
+            }
+            
+            startScreen.classList.add('hidden');
+
+            for (const file of files) {
+                await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            ctxHidden.clearRect(0, 0, hiddenCanvas.width, hiddenCanvas.height);
+                            // Standard draw, NO FLIP for uploads
+                            drawImageCover(ctxHidden, img, 0, 0, hiddenCanvas.width, hiddenCanvas.height);
+                            const imageData = hiddenCanvas.toDataURL('image/jpeg', 0.85);
+                            state.frames.push(imageData);
+                            resolve();
+                        };
+                        img.src = event.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+            
+            updateTimeline();
+            updateUI();
+            updateOnionSkin();
+            
+            setTimeout(() => {
+                timelineContainer.scrollTo({ left: timelineContainer.scrollWidth, behavior: 'smooth' });
+            }, 50);
+
+            imageUploadInput.value = '';
         }
 
         function saveFrameToState() {
@@ -437,7 +546,6 @@
             updateUI();
             updateOnionSkin();
             
-            // Auto-scroll timeline to end
             setTimeout(() => {
                 timelineContainer.scrollTo({ left: timelineContainer.scrollWidth, behavior: 'smooth' });
             }, 50);
@@ -452,7 +560,6 @@
 
         // --- Timeline & Drag-Drop ---
         function updateTimeline() {
-            // Clear but keep empty state
             Array.from(timelineContainer.children).forEach(child => {
                 if (child.id !== 'timeline-empty') child.remove();
             });
@@ -462,63 +569,47 @@
                 wrapper.className = 'frame-wrapper relative flex-shrink-0 group cursor-grab active:cursor-grabbing';
                 wrapper.draggable = true;
                 
-                // Drag Events
                 wrapper.addEventListener('dragstart', (e) => {
                     state.draggedItemIndex = index;
                     wrapper.classList.add('dragging');
                     e.dataTransfer.effectAllowed = 'move';
                 });
-                
                 wrapper.addEventListener('dragend', () => {
                     wrapper.classList.remove('dragging');
                     state.draggedItemIndex = null;
-                    // Remove all drag-over classes
                     document.querySelectorAll('.frame-wrapper').forEach(el => el.classList.remove('drag-over'));
                 });
-
                 wrapper.addEventListener('dragover', (e) => {
-                    e.preventDefault(); // Necessary for drop
+                    e.preventDefault();
                     if (state.draggedItemIndex === index) return;
                     wrapper.classList.add('drag-over');
                 });
-
-                wrapper.addEventListener('dragleave', () => {
-                    wrapper.classList.remove('drag-over');
-                });
-
+                wrapper.addEventListener('dragleave', () => wrapper.classList.remove('drag-over'));
                 wrapper.addEventListener('drop', (e) => {
                     e.preventDefault();
                     if (state.draggedItemIndex === null || state.draggedItemIndex === index) return;
-                    
-                    // Reorder array
                     const item = state.frames.splice(state.draggedItemIndex, 1)[0];
                     state.frames.splice(index, 0, item);
-                    
                     updateTimeline();
                     updateUI();
                     updateOnionSkin();
                 });
 
-                // Image
                 const img = document.createElement('img');
                 img.src = frameData;
-                img.className = 'h-24 w-32 object-cover rounded-lg border border-slate-300 shadow-sm mirror-x bg-white';
-                img.draggable = false; // Prevent default image drag
+                img.className = 'h-24 w-32 object-cover rounded-lg border border-slate-300 shadow-sm bg-white';
+                img.draggable = false;
 
-                // Badge
                 const badge = document.createElement('div');
                 badge.className = 'absolute bottom-1 left-1 bg-slate-800 bg-opacity-75 text-white text-[10px] font-bold px-1.5 py-0.5 rounded';
                 badge.textContent = index + 1;
 
-                // Delete Button (Improved)
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'delete-btn absolute -top-2 -right-2 bg-slate-600 hover:bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-md z-10';
                 deleteBtn.innerHTML = '<i class="fa-solid fa-times text-xs"></i>';
                 
-                // Prevent drag on delete click
                 deleteBtn.addEventListener('mousedown', (e) => e.stopPropagation());
                 deleteBtn.addEventListener('touchstart', (e) => e.stopPropagation());
-                
                 deleteBtn.onclick = (e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -539,6 +630,11 @@
         }
 
         function startPlayback() {
+            if (playbackCanvas.width === 0) {
+                 playbackCanvas.width = 1280;
+                 playbackCanvas.height = 720;
+            }
+
             state.isPlaying = true;
             state.currentFrameIndex = 0;
             videoElement.classList.add('hidden');
@@ -563,17 +659,52 @@
         function stopPlayback() {
             state.isPlaying = false;
             clearInterval(state.timerId);
-            videoElement.classList.remove('hidden');
+            
+            if (state.cameraActive) {
+                videoElement.classList.remove('hidden');
+                captureBtn.disabled = false;
+            }
+            
             playbackCanvas.classList.add('hidden');
             playBtn.classList.remove('hidden');
             stopBtn.classList.add('hidden');
-            captureBtn.disabled = false;
+            
             updateOnionSkin();
         }
 
         // --- UI Utils ---
         function updateUI() {
             frameCountDisplay.textContent = state.frames.length;
+            
+            // Update Camera Button State
+            if (state.cameraActive) {
+                cameraToggleBtn.classList.remove('text-slate-400');
+                cameraToggleBtn.classList.add('text-blue-500');
+                captureBtn.disabled = false;
+                
+                // Show switcher
+                switchCameraBtn.classList.remove('hidden');
+                
+                // Mirror logic for PREVIEW only
+                if (state.facingMode === 'user') {
+                    videoElement.classList.add('mirror-x');
+                } else {
+                    videoElement.classList.remove('mirror-x');
+                }
+            } else {
+                cameraToggleBtn.classList.add('text-slate-400');
+                cameraToggleBtn.classList.remove('text-blue-500');
+                captureBtn.disabled = true;
+                switchCameraBtn.classList.add('hidden');
+            }
+
+            // Only hide start screen if we have frames OR camera is on
+            if (state.frames.length > 0 || state.cameraActive) {
+                startScreen.classList.add('hidden');
+            } else {
+                startScreen.classList.remove('hidden');
+            }
+
             if (state.frames.length > 0) {
                 playBtn.disabled = false;
                 downloadBtn.disabled = false;
@@ -625,6 +756,11 @@
             if (state.frames.length === 0) return;
             recordingOverlay.classList.remove('hidden');
             
+            if (hiddenCanvas.width === 0) {
+                hiddenCanvas.width = 1280;
+                hiddenCanvas.height = 720;
+            }
+
             const stream = hiddenCanvas.captureStream(state.frameRate);
             const recorder = new MediaRecorder(stream, { mimeType: state.videoMimeType });
             const chunks = [];
@@ -656,12 +792,7 @@
                     const img = new Image();
                     img.onload = () => {
                         ctxHidden.clearRect(0,0,hiddenCanvas.width, hiddenCanvas.height);
-                        // Bake mirroring for export
-                        ctxHidden.save();
-                        ctxHidden.translate(hiddenCanvas.width, 0);
-                        ctxHidden.scale(-1, 1);
-                        ctxHidden.drawImage(img, 0, 0, hiddenCanvas.width, hiddenCanvas.height);
-                        ctxHidden.restore();
+                        drawImageCover(ctxHidden, img, 0, 0, hiddenCanvas.width, hiddenCanvas.height);
                         setTimeout(resolve, frameTime);
                     };
                     img.src = state.frames[i];
@@ -674,5 +805,3 @@
     </script>
 </body>
 </html>
-
-
