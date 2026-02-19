@@ -86,10 +86,10 @@
         }
     </style>
 </head>
-<body class="h-screen flex flex-col overflow-hidden">
+<body class="h-screen h-dvh flex flex-col overflow-hidden">
 
     <!-- Header -->
-    <header class="bg-white border-b border-slate-200 p-3 z-20">
+    <header class="bg-white border-b border-slate-200 p-3 z-20 shrink-0">
         <div class="max-w-6xl mx-auto flex justify-between items-center">
             <div class="flex items-center gap-3">
                 <div class="bg-slate-100 p-2 rounded-lg text-slate-600">
@@ -105,12 +105,13 @@
     </header>
 
     <!-- Main Workspace -->
-    <main class="flex-1 flex flex-col md:flex-row gap-6 p-4 md:p-6 max-w-7xl mx-auto w-full overflow-y-auto md:overflow-hidden">
+    <main class="flex-1 flex flex-col md:flex-row gap-4 md:gap-6 p-4 md:p-6 max-w-7xl mx-auto w-full overflow-y-auto md:overflow-hidden">
         
         <!-- Left Panel: Stage & Camera -->
         <div class="flex-1 flex flex-col gap-4 min-w-0 shrink-0">
             <!-- The Stage -->
-            <div class="relative bg-black rounded-2xl overflow-hidden shadow-lg border border-slate-200 aspect-video group w-full shrink-0">
+            <!-- ADDED min-h-[350px] here to fix mobile cut-off -->
+            <div class="relative bg-black rounded-2xl overflow-hidden shadow-lg border border-slate-200 min-h-[350px] md:min-h-0 md:aspect-video group w-full shrink-0">
                 
                 <!-- Live Camera Feed -->
                 <video id="camera-feed" autoplay playsinline class="w-full h-full object-cover mirror-x"></video>
@@ -131,13 +132,13 @@
 
                 <!-- Start Screen Overlay -->
                 <div id="start-screen" class="absolute inset-0 bg-slate-50 flex flex-col items-center justify-center z-40 text-slate-700 p-6 text-center">
-                    <div id="start-content" class="flex flex-col items-center">
-                        <div class="bg-white p-6 rounded-2xl mb-4 shadow-sm border border-slate-100">
-                            <i class="fa-solid fa-camera text-slate-400 text-5xl"></i>
+                    <div id="start-content" class="flex flex-col items-center w-full max-w-sm">
+                        <div class="bg-white p-4 md:p-6 rounded-2xl mb-4 shadow-sm border border-slate-100">
+                            <i class="fa-solid fa-camera text-slate-400 text-4xl md:text-5xl"></i>
                         </div>
-                        <h2 class="text-2xl font-bold mb-2">Ready to Animate?</h2>
-                        <p class="mb-6 text-slate-500">Allow camera access to start creating.</p>
-                        <button id="start-camera-btn" class="bg-blue-500 hover:bg-blue-600 text-white text-lg font-bold py-3 px-8 rounded-xl shadow-md btn-press transition">
+                        <h2 class="text-xl md:text-2xl font-bold mb-2">Ready to Animate?</h2>
+                        <p class="mb-6 text-slate-500 text-sm md:text-base">Allow camera access to start creating.</p>
+                        <button id="start-camera-btn" class="bg-blue-500 hover:bg-blue-600 text-white text-lg font-bold py-3 px-8 rounded-xl shadow-md btn-press transition w-full md:w-auto">
                             Start Camera
                         </button>
                     </div>
@@ -673,3 +674,5 @@
     </script>
 </body>
 </html>
+
+
