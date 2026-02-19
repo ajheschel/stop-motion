@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AniMate - Kids Stop Motion Studio</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gifshot/0.3.2/gifshot.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
@@ -124,7 +125,7 @@
 
                 <!-- Recording Overlay -->
                 <div id="recording-overlay" class="absolute inset-0 bg-slate-900 bg-opacity-95 flex flex-col items-center justify-center hidden z-50 text-white">
-                    <div class="text-xl font-bold mb-4">Rendering Video...</div>
+                    <div id="recording-text" class="text-xl font-bold mb-4">Rendering Video...</div>
                     <div class="w-64 h-2 bg-slate-700 rounded-full overflow-hidden">
                         <div id="render-progress" class="h-full bg-blue-500 w-0 transition-all duration-300"></div>
                     </div>
@@ -221,11 +222,16 @@
 
             <!-- Export Card -->
             <div class="bg-slate-800 p-5 rounded-xl shadow-md text-white">
-                <h3 class="text-lg font-bold mb-1">Export Movie</h3>
-                <p class="text-slate-400 text-xs mb-4">Download your animation as a video file.</p>
-                <button id="download-btn" class="w-full bg-blue-500 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-blue-600 btn-press transition disabled:opacity-50 disabled:cursor-not-allowed">
-                    <i class="fa-solid fa-download mr-2"></i> Download MP4
-                </button>
+                <h3 class="text-lg font-bold mb-3">Export Movie</h3>
+                <p class="text-slate-400 text-xs mb-4">Download your animation to share.</p>
+                <div class="flex flex-col gap-3">
+                    <button id="download-btn" class="w-full bg-blue-500 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-blue-600 btn-press transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+                        <i class="fa-solid fa-video mr-2"></i> Download MP4
+                    </button>
+                    <button id="download-gif-btn" class="w-full bg-indigo-500 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-indigo-600 btn-press transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+                        <i class="fa-solid fa-file-image mr-2"></i> Download GIF
+                    </button>
+                </div>
             </div>
         </div>
     </main>
@@ -293,6 +299,7 @@
         const fpsDisplay = document.getElementById('fps-display');
         const renderProgress = document.getElementById('render-progress');
         const recordingOverlay = document.getElementById('recording-overlay');
+        const recordingText = document.getElementById('recording-text');
         const imageUploadInput = document.getElementById('image-upload');
 
         const startCameraBtn = document.getElementById('start-camera-btn');
@@ -302,6 +309,7 @@
         const playBtn = document.getElementById('play-btn');
         const stopBtn = document.getElementById('stop-btn');
         const downloadBtn = document.getElementById('download-btn');
+        const downloadGifBtn = document.getElementById('download-gif-btn');
         const resetBtn = document.getElementById('reset-btn');
         const uploadBtn = document.getElementById('upload-btn');
         const onionSlider = document.getElementById('onion-slider');
@@ -349,6 +357,7 @@
             playBtn.addEventListener('click', togglePlay);
             stopBtn.addEventListener('click', stopPlayback);
             downloadBtn.addEventListener('click', exportVideo);
+            downloadGifBtn.addEventListener('click', exportGIF);
             
             resetBtn.addEventListener('click', () => {
                 if (state.frames.length > 0) {
@@ -708,10 +717,12 @@
             if (state.frames.length > 0) {
                 playBtn.disabled = false;
                 downloadBtn.disabled = false;
+                downloadGifBtn.disabled = false;
                 timelineEmpty.style.display = 'none';
             } else {
                 playBtn.disabled = true;
                 downloadBtn.disabled = true;
+                downloadGifBtn.disabled = true;
                 timelineEmpty.style.display = 'flex';
                 onionSkinImage.classList.add("hidden");
             }
@@ -754,6 +765,8 @@
         // --- Export ---
         async function exportVideo() {
             if (state.frames.length === 0) return;
+            recordingText.textContent = "Rendering MP4...";
+            renderProgress.style.width = '0%';
             recordingOverlay.classList.remove('hidden');
             
             if (hiddenCanvas.width === 0) {
@@ -799,6 +812,49 @@
                 });
             }
             setTimeout(() => recorder.stop(), 500);
+        }
+
+        // --- Export GIF ---
+        async function exportGIF() {
+            if (state.frames.length === 0) return;
+            
+            recordingText.textContent = "Creating GIF...";
+            renderProgress.style.width = '50%'; // Static progress for GIF as lib doesn't support streaming progress well
+            recordingOverlay.classList.remove('hidden');
+
+            // Use smaller dimensions for GIF to ensure performance/size
+            const gifWidth = 640;
+            const gifHeight = 360; 
+            const interval = 1 / state.frameRate;
+
+            gifshot.createGIF({
+                'images': state.frames,
+                'gifWidth': gifWidth,
+                'gifHeight': gifHeight,
+                'interval': interval,
+                'numFrames': state.frames.length,
+                'frameDuration': 1, // Doesn't matter much if interval is set
+                'sampleInterval': 10, // Higher is faster but lower quality
+                'numWorkers': 2
+            }, function(obj) {
+                if(!obj.error) {
+                    const image = obj.image;
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = image;
+                    a.download = `animate-studio-${Date.now()}.gif`;
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(() => {
+                        document.body.removeChild(a);
+                        recordingOverlay.classList.add('hidden');
+                    }, 100);
+                } else {
+                    console.error("GIF Creation Error:", obj.errorMsg);
+                    alert("Failed to create GIF. Try shorter animation.");
+                    recordingOverlay.classList.add('hidden');
+                }
+            });
         }
 
         window.onload = init;
