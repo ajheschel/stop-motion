@@ -16,20 +16,29 @@
             overscroll-behavior: none;
         }
         
-        /* Subtle Scrollbar */
-        .timeline-scroll::-webkit-scrollbar {
+        /* Custom Scrollbars */
+        .custom-scroll::-webkit-scrollbar {
             height: 8px;
+            width: 8px;
         }
-        .timeline-scroll::-webkit-scrollbar-track {
-            background: #f1f5f9;
+        .custom-scroll::-webkit-scrollbar-track {
+            background: transparent;
             border-radius: 4px;
         }
-        .timeline-scroll::-webkit-scrollbar-thumb {
+        .custom-scroll::-webkit-scrollbar-thumb {
             background: #cbd5e1; /* Slate-300 */
             border-radius: 4px;
         }
-        .timeline-scroll::-webkit-scrollbar-thumb:hover {
+        .custom-scroll::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
+        }
+
+        .hide-scroll::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scroll {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
         }
 
         .btn-press:active {
@@ -47,12 +56,6 @@
         /* Mirror utility - Only used for Front Camera Preview */
         .mirror-x {
             transform: scale-x(-1);
-        }
-
-        /* Onion Skin Overlay */
-        #onion-skin-layer {
-            pointer-events: none;
-            mix-blend-mode: normal;
         }
 
         /* Drag and Drop Visuals */
@@ -90,159 +93,166 @@
 <body class="h-screen h-dvh flex flex-col overflow-hidden">
 
     <!-- Header -->
-    <header class="bg-white border-b border-slate-200 p-3 z-20 shrink-0">
-        <div class="max-w-6xl mx-auto flex justify-between items-center">
+    <header class="bg-white border-b border-slate-200 h-16 px-4 z-20 shrink-0 flex items-center justify-between shadow-sm">
+        <div class="max-w-7xl mx-auto w-full flex justify-between items-center">
             <div class="flex items-center gap-3">
-                <div class="bg-slate-100 p-2 rounded-lg text-slate-600">
+                <div class="bg-slate-100 p-2 rounded-lg text-slate-600 flex items-center justify-center">
                     <i class="fa-solid fa-film text-xl"></i>
                 </div>
-                <h1 class="text-xl md:text-2xl font-bold text-slate-700 tracking-tight">AniMate <span class="text-slate-400 font-normal text-lg">Studio</span></h1>
+                <h1 class="text-xl md:text-2xl font-bold text-slate-700 tracking-tight leading-none">AniMate <span class="text-slate-400 font-normal text-lg">Studio</span></h1>
             </div>
             
-            <button id="reset-btn" class="bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold py-2 px-4 rounded-lg btn-press transition text-sm">
-                <i class="fa-solid fa-trash-can mr-2"></i>Clear
+            <button id="reset-btn" class="bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold py-2 px-4 rounded-lg btn-press transition text-sm flex items-center">
+                <i class="fa-solid fa-trash-can md:mr-2"></i><span class="hidden md:inline">Clear</span>
             </button>
         </div>
     </header>
 
-    <!-- Main Workspace -->
-    <main class="flex-1 flex flex-col md:flex-row gap-4 md:gap-6 p-4 md:p-6 max-w-7xl mx-auto w-full overflow-y-auto md:overflow-hidden">
-        
-        <!-- Left Panel: Stage & Camera -->
-        <div class="flex-1 flex flex-col gap-4 min-w-0 shrink-0">
-            <!-- The Stage -->
-            <div class="relative bg-black rounded-2xl overflow-hidden shadow-lg border border-slate-200 aspect-video group w-full shrink-0">
+    <!-- Main Workspace (Scrolls internally so body stays locked) -->
+    <main class="flex-1 min-h-0 flex flex-col w-full mx-auto relative bg-slate-50">
+        <div class="flex-1 overflow-y-auto w-full max-w-7xl mx-auto p-3 md:p-6 custom-scroll">
+            <div class="flex flex-col md:flex-row gap-4 md:gap-6 h-max md:h-full">
                 
-                <!-- Live Camera Feed -->
-                <!-- Only mirror if front facing camera (handled in JS) -->
-                <video id="camera-feed" autoplay playsinline webkit-playsinline muted class="w-full h-full object-cover"></video>
-                
-                <!-- Onion Skin (Previous Frame) -->
-                <img id="onion-skin-layer" class="absolute inset-0 w-full h-full object-cover opacity-30 hidden" src="" alt="Onion Skin">
-                
-                <!-- Playback Layer -->
-                <canvas id="playback-canvas" class="absolute inset-0 w-full h-full object-cover hidden bg-black"></canvas>
+                <!-- Left Panel: Stage & Camera -->
+                <!-- Mobile: Dynamically calculates height so Capture Button is ALWAYS visible without scrolling -->
+                <!-- Desktop: Fills remaining horizontal space -->
+                <div class="w-full md:flex-1 flex flex-col gap-3 md:gap-4 shrink-0 min-h-[calc(100dvh-190px)] md:min-h-0 md:h-full">
+                    
+                    <!-- The Stage -->
+                    <div class="flex-1 min-h-[150px] relative bg-slate-900 rounded-2xl overflow-hidden shadow-lg border border-slate-200 group w-full flex items-center justify-center">
+                        
+                        <!-- Live Camera Feed -->
+                        <video id="camera-feed" autoplay playsinline webkit-playsinline muted class="absolute inset-0 w-full h-full object-contain"></video>
+                        
+                        <!-- Onion Skin (Previous Frame) -->
+                        <img id="onion-skin-layer" class="absolute inset-0 w-full h-full object-contain opacity-30 hidden pointer-events-none" src="" alt="Onion Skin">
+                        
+                        <!-- Playback Layer -->
+                        <canvas id="playback-canvas" class="absolute inset-0 w-full h-full object-contain hidden bg-black pointer-events-none"></canvas>
 
-                <!-- Recording Overlay -->
-                <div id="recording-overlay" class="absolute inset-0 bg-slate-900 bg-opacity-95 flex flex-col items-center justify-center hidden z-50 text-white">
-                    <div id="recording-text" class="text-xl font-bold mb-4">Rendering Video...</div>
-                    <div class="w-64 h-2 bg-slate-700 rounded-full overflow-hidden">
-                        <div id="render-progress" class="h-full bg-blue-500 w-0 transition-all duration-300"></div>
+                        <!-- Recording Overlay -->
+                        <div id="recording-overlay" class="absolute inset-0 bg-slate-900 bg-opacity-95 flex flex-col items-center justify-center hidden z-50 text-white w-full h-full">
+                            <div id="recording-text" class="text-xl font-bold mb-4">Rendering Video...</div>
+                            <div class="w-64 h-2 bg-slate-700 rounded-full overflow-hidden">
+                                <div id="render-progress" class="h-full bg-blue-500 w-0 transition-all duration-300"></div>
+                            </div>
+                        </div>
+
+                        <!-- Start Screen Overlay -->
+                        <div id="start-screen" class="absolute inset-0 bg-slate-900 flex flex-col items-center justify-center z-40 text-slate-200 p-4 text-center w-full h-full">
+                            <div id="start-content" class="flex flex-col items-center w-full max-w-sm">
+                                <div class="bg-slate-800 p-4 md:p-6 rounded-2xl mb-4 shadow-lg border border-slate-700">
+                                    <i class="fa-solid fa-camera text-slate-400 text-3xl md:text-5xl"></i>
+                                </div>
+                                <h2 class="text-xl md:text-2xl font-bold mb-2 text-white">Ready to Animate?</h2>
+                                <p class="mb-6 text-slate-400 text-sm md:text-base">Allow camera access to start.</p>
+                                <button id="start-camera-btn" class="bg-blue-500 hover:bg-blue-600 text-white text-base md:text-lg font-bold py-3 px-8 rounded-xl shadow-md btn-press transition w-auto">
+                                    Start Camera
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Stage Controls -->
+                    <div class="shrink-0 flex items-center justify-between bg-white p-2 md:p-4 rounded-xl shadow-sm border border-slate-200 gap-2">
+                        
+                        <!-- Left Controls Group -->
+                        <div class="flex items-center gap-1 md:gap-3 overflow-x-auto hide-scroll flex-1">
+                            <!-- Camera Toggle -->
+                            <button id="camera-toggle-btn" class="flex flex-col items-center justify-center text-slate-400 hover:text-blue-500 transition btn-press p-2 rounded-lg hover:bg-slate-50 min-w-[3rem]" title="Toggle Camera">
+                                <i class="fa-solid fa-video text-base md:text-lg mb-0.5"></i>
+                                <span class="text-[9px] font-bold uppercase tracking-wider">On/Off</span>
+                            </button>
+
+                             <!-- Switch Camera (Front/Back) -->
+                             <button id="switch-camera-btn" class="flex flex-col items-center justify-center text-slate-400 hover:text-blue-500 transition btn-press p-2 rounded-lg hover:bg-slate-50 hidden md:hidden min-w-[3rem]" title="Switch Camera">
+                                <i class="fa-solid fa-camera-rotate text-base md:text-lg mb-0.5"></i>
+                                <span class="text-[9px] font-bold uppercase tracking-wider">Switch</span>
+                            </button>
+
+                            <!-- Onion Skin Control -->
+                            <div class="flex flex-col items-center justify-center px-2 md:px-4 border-l border-slate-100 min-w-[6rem]">
+                                <label class="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Ghost Mode</label>
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-layer-group text-slate-400 text-xs"></i>
+                                    <input type="range" id="onion-slider" min="0" max="1" step="0.1" value="0.3" class="w-16 md:w-24 h-1.5 accent-slate-500 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Controls Group -->
+                        <div class="flex items-center gap-3 md:gap-5 shrink-0 pl-2">
+                            <!-- Capture Button -->
+                            <button id="capture-btn" class="w-14 h-14 md:w-16 md:h-16 shrink-0 bg-red-500 rounded-full border-4 border-red-100 shadow-md flex items-center justify-center hover:bg-red-600 active:bg-red-700 btn-press transition disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:border-slate-100" disabled>
+                                <div class="w-5 h-5 md:w-6 md:h-6 bg-white rounded-full pointer-events-none"></div>
+                            </button>
+
+                            <!-- Frame Count -->
+                            <div class="w-12 md:w-16 text-right shrink-0">
+                                <span id="frame-count" class="text-xl md:text-2xl font-bold text-slate-700 font-mono leading-none">0</span>
+                                <span class="text-slate-400 text-[9px] md:text-[10px] font-bold uppercase block mt-1">Frames</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Start Screen Overlay -->
-                <div id="start-screen" class="absolute inset-0 bg-slate-50 flex flex-col items-center justify-center z-40 text-slate-700 p-4 text-center">
-                    <div id="start-content" class="flex flex-col items-center w-full max-w-sm">
-                        <div class="bg-white p-3 md:p-6 rounded-2xl mb-2 md:mb-4 shadow-sm border border-slate-100">
-                            <i class="fa-solid fa-camera text-slate-400 text-3xl md:text-5xl"></i>
+                <!-- Right Panel: Playback & Tools (Flows below on mobile) -->
+                <div class="w-full md:w-72 shrink-0 flex flex-col gap-4 pb-6 md:pb-0 md:h-full md:overflow-y-auto custom-scroll">
+                    
+                    <!-- Tools Card -->
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+                        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Playback</h3>
+                        
+                        <div class="flex justify-center gap-3 mb-6">
+                            <button id="play-btn" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg shadow-sm btn-press transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                <i class="fa-solid fa-play mr-2"></i>Play
+                            </button>
+                            <button id="stop-btn" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 px-4 rounded-lg shadow-sm btn-press transition hidden">
+                                <i class="fa-solid fa-stop mr-2"></i>Stop
+                            </button>
                         </div>
-                        <h2 class="text-lg md:text-2xl font-bold mb-1 md:mb-2">Ready to Animate?</h2>
-                        <p class="mb-3 md:mb-6 text-slate-500 text-xs md:text-base">Allow camera access to start.</p>
-                        <button id="start-camera-btn" class="bg-blue-500 hover:bg-blue-600 text-white text-base md:text-lg font-bold py-2 px-6 md:py-3 md:px-8 rounded-xl shadow-md btn-press transition w-auto">
-                            Start Camera
+
+                        <div class="mb-6">
+                             <div class="flex justify-between mb-2">
+                                <span class="text-xs font-bold text-slate-400">SPEED (FPS)</span>
+                                <span id="fps-display" class="text-xs font-bold text-slate-600 font-mono">10</span>
+                            </div>
+                            <input type="range" id="fps-slider" min="1" max="24" value="10" class="w-full cursor-pointer">
+                        </div>
+                        
+                        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3 mt-6">Import</h3>
+                        <input type="file" id="image-upload" accept="image/*" class="hidden" multiple>
+                        <button id="upload-btn" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold py-2 px-4 rounded-lg border border-slate-200 btn-press transition text-sm">
+                            <i class="fa-solid fa-images mr-2"></i> Upload Photos
                         </button>
                     </div>
-                </div>
-            </div>
 
-            <!-- Stage Controls -->
-            <div class="flex flex-wrap items-center justify-between bg-white p-2 md:p-4 rounded-xl shadow-sm border border-slate-200 gap-y-2">
-                
-                <!-- Left Controls Group -->
-                <div class="flex items-center gap-2 md:gap-4 overflow-x-auto pb-1 md:pb-0 hide-scroll">
-                    <!-- Camera Toggle -->
-                    <button id="camera-toggle-btn" class="flex flex-col items-center justify-center text-slate-400 hover:text-blue-500 transition btn-press p-1.5 md:p-2 rounded-lg hover:bg-slate-50" title="Toggle Camera">
-                        <i class="fa-solid fa-video text-base md:text-lg mb-0.5"></i>
-                        <span class="text-[8px] md:text-[9px] font-bold uppercase tracking-wider">On/Off</span>
-                    </button>
-
-                     <!-- Switch Camera (Front/Back) - Added md:hidden -->
-                     <button id="switch-camera-btn" class="flex flex-col items-center justify-center text-slate-400 hover:text-blue-500 transition btn-press p-1.5 md:p-2 rounded-lg hover:bg-slate-50 hidden md:hidden" title="Switch Camera">
-                        <i class="fa-solid fa-camera-rotate text-base md:text-lg mb-0.5"></i>
-                        <span class="text-[8px] md:text-[9px] font-bold uppercase tracking-wider">Switch</span>
-                    </button>
-
-                    <!-- Onion Skin Control -->
-                    <div class="flex flex-col items-center justify-center px-2 md:px-3 border-l border-slate-100">
-                        <label class="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Ghost Mode</label>
-                        <div class="flex items-center gap-2">
-                            <i class="fa-solid fa-layer-group text-slate-400 text-xs"></i>
-                            <input type="range" id="onion-slider" min="0" max="1" step="0.1" value="0.3" class="w-20 md:w-28 h-1.5 accent-slate-500 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                    <!-- Export Card -->
+                    <div class="bg-slate-800 p-5 rounded-xl shadow-md text-white mb-4 md:mb-0">
+                        <h3 class="text-lg font-bold mb-3">Export Movie</h3>
+                        <p class="text-slate-400 text-xs mb-4">Download your animation to share.</p>
+                        <div class="flex flex-col gap-3">
+                            <button id="download-btn" class="w-full bg-blue-500 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-blue-600 btn-press transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+                                <i class="fa-solid fa-video mr-2"></i> Download MP4
+                            </button>
+                            <button id="download-gif-btn" class="w-full bg-indigo-500 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-indigo-600 btn-press transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+                                <i class="fa-solid fa-file-image mr-2"></i> Download GIF
+                            </button>
                         </div>
                     </div>
                 </div>
-
-                <!-- Right Controls Group -->
-                <div class="flex items-center gap-3 md:gap-4 ml-auto">
-                    <!-- Capture Button -->
-                    <button id="capture-btn" class="w-14 h-14 md:w-16 md:h-16 bg-red-500 rounded-full border-4 border-red-100 shadow-md flex items-center justify-center hover:bg-red-600 active:bg-red-700 btn-press transition disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:border-slate-100" disabled>
-                        <div class="w-5 h-5 md:w-6 md:h-6 bg-white rounded-full"></div>
-                    </button>
-
-                    <!-- Frame Count -->
-                    <div class="w-16 md:w-24 text-right">
-                        <span id="frame-count" class="text-xl md:text-2xl font-bold text-slate-700 font-mono">0</span>
-                        <span class="text-slate-400 text-[9px] md:text-[10px] font-bold uppercase block">Frames</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Right Panel: Playback & Tools -->
-        <div class="w-full md:w-72 flex flex-col gap-4 shrink-0 pb-20 md:pb-0">
-            
-            <!-- Tools Card -->
-            <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
-                <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Playback</h3>
                 
-                <div class="flex justify-center gap-3 mb-6">
-                    <button id="play-btn" class="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg shadow-sm btn-press transition disabled:opacity-50 disabled:cursor-not-allowed">
-                        <i class="fa-solid fa-play mr-2"></i>Play
-                    </button>
-                    <button id="stop-btn" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 px-4 rounded-lg shadow-sm btn-press transition hidden">
-                        <i class="fa-solid fa-stop mr-2"></i>Stop
-                    </button>
-                </div>
-
-                <div class="mb-6">
-                     <div class="flex justify-between mb-2">
-                        <span class="text-xs font-bold text-slate-400">SPEED (FPS)</span>
-                        <span id="fps-display" class="text-xs font-bold text-slate-600 font-mono">10</span>
-                    </div>
-                    <input type="range" id="fps-slider" min="1" max="24" value="10" class="w-full cursor-pointer">
-                </div>
-                
-                <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3 mt-6">Import</h3>
-                <input type="file" id="image-upload" accept="image/*" class="hidden" multiple>
-                <button id="upload-btn" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold py-2 px-4 rounded-lg border border-slate-200 btn-press transition text-sm">
-                    <i class="fa-solid fa-images mr-2"></i> Upload Photos
-                </button>
-            </div>
-
-            <!-- Export Card -->
-            <div class="bg-slate-800 p-5 rounded-xl shadow-md text-white">
-                <h3 class="text-lg font-bold mb-3">Export Movie</h3>
-                <p class="text-slate-400 text-xs mb-4">Download your animation to share.</p>
-                <div class="flex flex-col gap-3">
-                    <button id="download-btn" class="w-full bg-blue-500 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-blue-600 btn-press transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
-                        <i class="fa-solid fa-video mr-2"></i> Download MP4
-                    </button>
-                    <button id="download-gif-btn" class="w-full bg-indigo-500 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-indigo-600 btn-press transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
-                        <i class="fa-solid fa-file-image mr-2"></i> Download GIF
-                    </button>
-                </div>
             </div>
         </div>
     </main>
 
     <!-- Bottom Timeline -->
-    <div class="h-28 md:h-32 bg-white border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-20 flex-shrink-0">
-        <div id="timeline" class="h-full w-full overflow-x-auto timeline-scroll flex items-center gap-2 px-4 py-2">
+    <div class="h-24 md:h-32 bg-white border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-20 flex-shrink-0">
+        <div id="timeline" class="h-full w-full overflow-x-auto custom-scroll flex items-center gap-2 px-4 py-2">
             <!-- Empty State -->
             <div id="timeline-empty" class="w-full text-center text-slate-300 flex flex-col items-center justify-center h-full">
-                <i class="fa-solid fa-images text-2xl mb-2 opacity-50"></i>
-                <p class="text-xs font-bold">Captured frames appear here</p>
+                <i class="fa-solid fa-images text-2xl md:text-3xl mb-1 md:mb-2 opacity-50"></i>
+                <p class="text-xs font-bold uppercase tracking-wide">Captured frames appear here</p>
             </div>
             <!-- Frames injected here -->
         </div>
@@ -424,7 +434,7 @@
                 state.stream = stream;
                 videoElement.srcObject = stream;
                 
-                // Set canvas sizes
+                // Set canvas sizes safely to standard 16:9 720p 
                 hiddenCanvas.width = 1280;
                 hiddenCanvas.height = 720;
                 playbackCanvas.width = 1280;
@@ -606,7 +616,7 @@
 
                 const img = document.createElement('img');
                 img.src = frameData;
-                img.className = 'h-24 w-32 object-cover rounded-lg border border-slate-300 shadow-sm bg-white';
+                img.className = 'h-20 md:h-24 w-28 md:w-32 object-cover rounded-lg border border-slate-300 shadow-sm bg-white';
                 img.draggable = false;
 
                 const badge = document.createElement('div');
